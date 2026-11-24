@@ -69,11 +69,16 @@ cp .env.example .env.local   # 改成自己的路径/密钥，已在 .gitignore 
 ### 1. 生成 deploy key（对 Vault 仓库有读写权限）
 
 ```bash
-ssh-keygen -t ed25519 -C "xxuntilu-guides-actions" -f ./vault_deploy_key -N ""
+# 生成到仓库之外，避免误提交
+ssh-keygen -t ed25519 -C "xxuntilu-guides-actions" -f ~/.ssh/xxuntilu_guides_deploy -N ""
+cat ~/.ssh/xxuntilu_guides_deploy.pub          # 复制公钥
+pbcopy < ~/.ssh/xxuntilu_guides_deploy         # 复制私钥（到 Secrets 页面再执行）
 ```
 
-- 公钥 `vault_deploy_key.pub` → Vault 仓库 `Settings → Deploy keys → Add deploy key`，**勾选 Allow write access**（归档后要 commit 回写）。
-- 私钥 `vault_deploy_key` 全文 → 站点仓库 `Settings → Secrets and variables → Actions → Secrets`，名字 `VAULT_DEPLOY_KEY`。
+- 公钥 → Vault 仓库 `Settings → Deploy keys → Add deploy key`，**勾选 Allow write access**（归档后要 commit 回写）。
+- 私钥全文 → 站点仓库 `Settings → Secrets and variables → Actions → Secrets`，名字 `VAULT_DEPLOY_KEY`。
+
+> 私钥等同于 Vault 的读权限，**不要放进仓库目录**（`.gitignore` 已挡 `*_deploy_key`，但别依赖它）。生成后本机文件权限应保持 `600`。
 
 ### 2. 其余 Secrets / Variables
 

@@ -14,3 +14,10 @@ public/private-vault.enc.json
 .env*.local
 .DS_Store
 .workbuddy/
+
+# 部署密钥：绝不入库（私钥一旦进公开库等于把 Vault 交出去）
+vault_deploy_key
+vault_deploy_key.pub
+*.pem
+*_deploy_key
+*_deploy_key.pub
