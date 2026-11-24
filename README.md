@@ -146,6 +146,19 @@ private: true
 3. **解锁验证**：打开 `/private/`，输错密码应提示失败；输对后能看到私密笔记正文；刷新页面应重新上锁。
 4. **进度验证**：勾几条清单、标记一篇已读，刷新后仍保留；换一个浏览器则是干净的初始状态。
 
+## 五之二、分类与导航
+
+导航两级：**知识域（Vault 顶层目录）→ 分组（二级目录）**。分组顺序由 `config/site.config.mjs` 的 `groupOrder` 显式指定，组内顺序按文件名编号（`L2-07` → `L2-01` 递增），没有编号的按标题音序。
+
+调整分类有两条路：
+
+| 方式 | 操作 | 影响 |
+| :--- | :--- | :--- |
+| 改站点展示 | 在 `groupOrder` 里调顺序；或给笔记 frontmatter 加分类字段（后续支持） | 只影响站点，Vault 不动 |
+| 改真实结构 | 编辑 `scripts/reorg-vault.mjs` 的 `PLAN` → `node scripts/reorg-vault.mjs` 预演 → `--apply` 执行 | 移动 Vault 里的 .md，Obsidian 结构同步变化 |
+
+`reorg-vault.mjs` 的安全措施：预检每条规则必须恰好命中一篇（否则整体中止）、目标重名拒绝覆盖、用 `git mv` 保留历史、移完清理空目录。wikilink 按笔记名解析，移动不会断链（已用断链计数前后比对验证）。
+
 ## 六、和原始方案的差异（以及为什么）
 
 | 方案原文 | 这里的实现 | 原因 |
@@ -166,6 +179,7 @@ private: true
 │   ├── sync-vault.mjs            # Vault → content（含私密分流、反链、搜索索引）
 │   ├── encrypt-private.mjs       # 私密笔记 → AES-GCM 密文包
 │   ├── archive-inbox.mjs         # 00-Inbox 分类归档（默认 dry-run）
+│   ├── reorg-vault.mjs           # Vault 分类重排：按 PLAN 批量 git mv（默认 dry-run）
 │   ├── check-leaks.mjs           # 产物泄漏扫描（CI 门禁）
 │   ├── test-crypto.mjs           # 加解密跨运行时自测
 │   └── lib/                      # frontmatter 解析、slug、隐私判定、wikilink

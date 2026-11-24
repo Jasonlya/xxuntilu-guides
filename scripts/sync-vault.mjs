@@ -20,6 +20,7 @@ import {
   publishExtensions,
   domainMeta,
   domainOrder,
+  groupOrder,
 } from '../config/site.config.mjs';
 import { buildMeta, privacyVerdict, slugify, extractWikiTargets, hashSuffix, resolveWikiLinks } from './lib/notes.mjs';
 
@@ -229,7 +230,27 @@ function main() {
     ),
   );
 
-  // ---- 导航树 ----
+  /**
+ * 组内排序键：文件名前缀里的编号（L2-07 / L1-11）决定顺序，
+ * 没有编号的笔记（Redis、MySQL 这类）排到编号之后，组内按标题音序。
+ * 不能用 frontmatter 的 id：有的笔记写的是 kb-method-xxx，会把顺序打乱。
+ */
+function seqKey(slug) {
+  const m = /^([A-Za-z]+)-(\d+)/.exec(String(slug));
+  return m ? `${m[1]}-${m[2].padStart(3, '0')}` : `~${slug}`;
+}
+
+/**
+ * 组内排序键：文件名前缀里的编号（L2-07 / L1-11）决定顺序，
+ * 没有编号的笔记（Redis、MySQL 这类）排到编号之后，组内按标题音序。
+ * 不能用 frontmatter 的 id：有的笔记写的是 kb-method-xxx，会把顺序打乱。
+ */
+function seqKey(slug) {
+  const m = /^([A-Za-z]+)-(\d+)/.exec(String(slug));
+  return m ? `${m[1]}-${m[2].padStart(3, '0')}` : `~${slug}`;
+}
+
+// ---- 导航树 ----
   const domainBuckets = new Map();
   for (const note of publicNotes) {
     if (!domainBuckets.has(note.domain)) domainBuckets.set(note.domain, new Map());
@@ -239,6 +260,8 @@ function main() {
       slug: note.slug,
       title: note.title,
       id: note.id,
+      seq: seqKey(note.slug),
+      seq: seqKey(note.slug),
       level: note.level,
       updated: note.updated,
       minutes: note.minutes,
@@ -257,16 +280,19 @@ function main() {
   });
 
   const domains = orderedDomains.map((id) => {
+    const order = groupOrder[id] || [];
+    const rank = (name) => {
+      const i = order.indexOf(name);
+      return i === -1 ? order.length + 1 : i;
+    };
     const groups = [...domainBuckets.get(id).entries()]
-      .sort(([a], [b]) => {
-        if (a === '总览') return -1;
-        if (b === '总览') return 1;
-        return collator.compare(a, b);
-      })
+      .sort(([a], [b]) => rank(a) - rank(b) || collator.compare(a, b))
       .map(([groupId, list]) => ({
         id: groupId,
         title: groupId,
-        notes: list.sort((a, b) => collator.compare(a.id || a.title, b.id || b.title)),
+        notes: list.sort(
+          (a, b) => collator.compare(a.seq, b.seq) || collator.compare(a.title, b.title),
+        ),
         count: list.length,
       }));
     const count = groups.reduce((sum, g) => sum + g.count, 0);
