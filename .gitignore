@@ -1,0 +1,16 @@
+node_modules/
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+
+# 内容产物：由 scripts/sync-vault.mjs 从 Vault 生成，绝不入库
+content/
+public/search-index.json
+public/private-vault.enc.json
+
+.env
+.env.local
+.env*.local
+.DS_Store
+.workbuddy/

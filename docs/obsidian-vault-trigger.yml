@@ -1,0 +1,34 @@
+# 复制到「私有 Obsidian Vault」仓库的 .github/workflows/ 下即可。
+# 作用：Vault 一 push 就通知站点仓库重新构建。
+#
+# 前置：
+#   1. 在 Vault 仓库 Settings → Secrets 添加 SITE_DISPATCH_TOKEN
+#      （fine-grained PAT，仅授权 xxuntilu-guides 仓库的 Actions: write）
+#   2. SITE_REPO 按需改（默认 Jasonlya/xxuntilu-guides）
+name: Trigger site rebuild
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '**.md'
+  workflow_dispatch:
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch to xxuntilu-guides
+        env:
+          TOKEN: ${{ secrets.SITE_DISPATCH_TOKEN }}
+          SITE_REPO: Jasonlya/xxuntilu-guides
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "::error::缺少 SITE_DISPATCH_TOKEN"
+            exit 1
+          fi
+          curl -sS -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $TOKEN" \
+            "https://api.github.com/repos/${SITE_REPO}/dispatches" \
+            -d '{"event_type":"vault-updated"}'

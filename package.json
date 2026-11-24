@@ -1,0 +1,35 @@
+{
+  "name": "xxuntilu-guides",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Obsidian 知识库公开分享站：三栏阅读、清单勾选、自测卡片与 AES-GCM 私密隔离",
+  "scripts": {
+    "content": "node --env-file-if-exists=.env.local scripts/sync-vault.mjs && node --env-file-if-exists=.env.local scripts/encrypt-private.mjs",
+    "content:watch": "node --env-file-if-exists=.env.local scripts/sync-vault.mjs --watch",
+    "dev": "npm run content && next dev",
+    "build": "npm run content && next build",
+    "build:local": "next build",
+    "archive": "node --env-file-if-exists=.env.local scripts/archive-inbox.mjs",
+    "verify:leaks": "node scripts/check-leaks.mjs",
+    "test:crypto": "node scripts/test-crypto.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "github-slugger": "^2.0.0",
+    "lucide-react": "^0.468.0",
+    "mermaid": "^11.4.1",
+    "next": "^15.5.4",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-markdown": "^10.1.0",
+    "rehype-slug": "^6.0.0",
+    "remark-gfm": "^4.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.7.2",
+    "yaml": "^2.6.1"
+  }
+}

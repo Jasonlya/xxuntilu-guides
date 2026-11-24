@@ -1,0 +1,116 @@
+name: Publish Public Study Hub
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'README.md'
+      - 'docs/**'
+      - 'gemini-code-*.md'
+  schedule:
+    # 每天 UTC 20:10（北京时间 04:10）同步一次私有 Vault
+    - cron: '10 20 * * *'
+  # 由 Vault 仓库的 workflow 触发（见 docs/obsidian-vault-trigger.yml）
+  repository_dispatch:
+    types: [vault-updated]
+  workflow_dispatch:
+    inputs:
+      archive:
+        description: '是否运行 AI 归档（00-Inbox）'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout site
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Checkout private vault
+        env:
+          VAULT_DEPLOY_KEY: ${{ secrets.VAULT_DEPLOY_KEY }}
+          VAULT_REPO: ${{ vars.VAULT_REPO || 'Jasonlya/obsidian-vault' }}
+        run: |
+          if [ -z "$VAULT_DEPLOY_KEY" ]; then
+            echo "::error::缺少 secret VAULT_DEPLOY_KEY（需要对该私有 Vault 仓库有读写权限的 deploy key）"
+            exit 1
+          fi
+          mkdir -p ~/.ssh
+          printf '%s\n' "$VAULT_DEPLOY_KEY" > ~/.ssh/vault_key
+          chmod 600 ~/.ssh/vault_key
+          ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts 2>/dev/null
+          export GIT_SSH_COMMAND="ssh -i ~/.ssh/vault_key -o IdentitiesOnly=yes"
+          git clone --depth 30 "git@github.com:${VAULT_REPO}.git" "$RUNNER_TEMP/vault"
+          echo "VAULT_DIR=$RUNNER_TEMP/vault" >> "$GITHUB_ENV"
+          echo "GIT_SSH_COMMAND=ssh -i $HOME/.ssh/vault_key -o IdentitiesOnly=yes" >> "$GITHUB_ENV"
+
+      - name: Archive inbox notes with LLM
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.archive }}
+        env:
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          LLM_BASE_URL: ${{ vars.LLM_BASE_URL || 'https://api.deepseek.com/v1' }}
+          LLM_MODEL: ${{ vars.LLM_MODEL || 'deepseek-chat' }}
+        run: node scripts/archive-inbox.mjs --apply
+
+      - name: Commit archived notes back to vault
+        run: |
+          cd "$VAULT_DIR"
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "没有需要回写的归档变更"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore(inbox): auto classify and archive notes"
+          git push origin HEAD:main
+
+      - name: Build content (private notes filtered or encrypted)
+        env:
+          VAULT_MASTER_PASSWORD: ${{ secrets.VAULT_MASTER_PASSWORD }}
+        run: npm run content
+
+      - name: Build static site
+        env:
+          NEXT_PUBLIC_BASE_PATH: /${{ github.event.repository.name }}
+        run: npx next build
+
+      - name: Leak guard (private content must not ship as plaintext)
+        run: node scripts/check-leaks.mjs
+
+      - name: Upload Pages artifact
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: out
+
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
