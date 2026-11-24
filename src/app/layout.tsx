@@ -1,4 +1,6 @@
 import type { Metadata, Viewport } from 'next';
+import fs from 'node:fs';
+import path from 'node:path';
 import './globals.css';
 import { getManifest } from '@/lib/content';
 import { SiteHeader } from '@/components/SiteHeader';
@@ -6,6 +8,11 @@ import { NavProvider } from '@/components/NavContext';
 import { ProgressProvider } from '@/lib/progress';
 import { VaultProvider } from '@/components/VaultProvider';
 import { VaultUnlockDialog } from '@/components/VaultUnlockDialog';
+
+/** 私密密文包只在配置了主密码的构建里存在 */
+const hasPrivateBundle = fs.existsSync(
+  path.join(process.cwd(), 'public', 'private-vault.enc.json'),
+);
 
 export const metadata: Metadata = {
   title: {
@@ -34,7 +41,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="zh-CN">
       <body>
         <ProgressProvider>
-          <VaultProvider>
+          <VaultProvider available={hasPrivateBundle}>
             <NavProvider>
               <div className="shell">
                 <SiteHeader totalNotes={manifest.stats.notes} repo="https://github.com/Jasonlya/xxuntilu-guides" />

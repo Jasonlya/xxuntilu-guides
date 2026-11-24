@@ -26,12 +26,25 @@ export function resolveWiki(target: string, linkmap: LinkMap): string | undefine
  * - 解析不到（多为私密笔记或尚未创建） -> [别名](missing:别名)，渲染成不可点的占位
  * 代码块内的内容不处理，避免破坏示例代码。
  */
+/** 手写的 /note/xxx/ 绝对链接：按 linkmap 校正到当前 slug（改名或旧路径也能跳对） */
+const ABS_NOTE_RE = /\]\(\/note\/([^)\s]+?)\/?\)/g;
+
 export function preprocessWikiLinks(markdown: string, linkmap: LinkMap): string {
   const segments = markdown.split(/(```[\s\S]*?```|`[^`\n]*`)/g);
   return segments
     .map((segment, index) => {
       if (index % 2 === 1) return segment;
-      return segment.replace(WIKI_RE, (full, target: string, alias: string | undefined) => {
+      const segmentWithAbs = segment.replace(ABS_NOTE_RE, (full, raw: string) => {
+        let decoded = raw;
+        try {
+          decoded = decodeURIComponent(raw);
+        } catch {
+          return full;
+        }
+        const slug = resolveWiki(decoded, linkmap);
+        return slug ? `](/note/${encodeURIComponent(slug)}/)` : full;
+      });
+      return segmentWithAbs.replace(WIKI_RE, (full, target: string, alias: string | undefined) => {
         const label = (alias || target).trim();
         if (full.startsWith('!')) {
           return `> 附件：${label}`;

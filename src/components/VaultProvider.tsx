@@ -34,7 +34,14 @@ interface VaultContextValue {
 
 const VaultContext = createContext<VaultContextValue | null>(null);
 
-export function VaultProvider({ children }: { children: React.ReactNode }) {
+export function VaultProvider({
+  children,
+  available = true,
+}: {
+  children: React.ReactNode;
+  /** 构建期是否存在密文包（未配置主密码时为 false，省掉一次必然 404 的请求） */
+  available?: boolean;
+}) {
   const [status, setStatus] = useState<VaultStatus>('loading');
   const [count, setCount] = useState(0);
   const [bundle, setBundle] = useState<PrivateBundle | null>(null);
@@ -45,6 +52,10 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
   const passwordRef = useRef('');
 
   useEffect(() => {
+    if (!available) {
+      setStatus('unavailable');
+      return;
+    }
     let cancelled = false;
     (async () => {
       try {
@@ -62,7 +73,7 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [available]);
 
   const unlock = useCallback(async (password: string) => {
     setBusy(true);

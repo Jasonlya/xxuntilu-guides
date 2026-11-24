@@ -11,6 +11,8 @@ import { splitFrontmatter, toArray, toDateString } from './frontmatter.mjs';
 export function slugify(input) {
   return String(input)
     .replace(/\.md$/i, '')
+    // 点号会让 Next 把路径当静态文件处理，尾斜杠被吞掉，预取地址变成 xxx.txt
+    .replace(/\./g, '-')
     .trim()
     .replace(/[\s\u3000]+/g, '-')
     .replace(/[\\/:*?"<>|#%&{}$!'@+`=~^[\];,]+/g, '-')
