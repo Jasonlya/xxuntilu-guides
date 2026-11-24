@@ -99,6 +99,7 @@ pbcopy < ~/.ssh/xxuntilu_guides_deploy         # 复制私钥（到 Secrets 页�
 
 - 触发：push 到 `main`、每天 04:10（北京时间）、手动 `Run workflow`（可勾选是否跑 AI 归档）。
 - 构建时注入 `NEXT_PUBLIC_BASE_PATH=/xxuntilu-guides`，以适配项目页子路径。
+- 笔记页右上角有「在 Obsidian 打开」，走 `obsidian://open?vault=<库名>&file=<库内路径>` 深链；库名默认 `Obsidian Vault`，不一致时用 `NEXT_PUBLIC_OBSIDIAN_VAULT` 覆盖。
 - 归档 → 回写 Vault → 构建 → 泄漏扫描 → 上传 → 部署，任一步失败都不会发布。
 
 ### 4.（可选）Vault 一 push 就重建站点

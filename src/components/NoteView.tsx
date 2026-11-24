@@ -11,6 +11,7 @@ import {
   FileText,
   ListChecks,
   Network,
+  PenLine,
   Sparkles,
 } from 'lucide-react';
 import { useProgress, useScrollProgress } from '@/lib/progress';
@@ -56,6 +57,19 @@ export function NoteView({ note, linkmap, domains, adjacent, siblings }: Props) 
     () => stripLeadingH1(preprocessWikiLinks(note.body, linkmap)),
     [note.body, linkmap],
   );
+
+  // 深链到本地 Obsidian：只有本机装了 Obsidian 且库名一致才会响应，对访客无害
+  const obsidianHref = useMemo(() => {
+    const vaultPath = note.meta.path;
+    if (!vaultPath) return '';
+    const vault = process.env.NEXT_PUBLIC_OBSIDIAN_VAULT || 'Obsidian Vault';
+    const file = vaultPath
+      .replace(/\.md$/i, '')
+      .split('/')
+      .map((segment) => encodeURIComponent(segment))
+      .join('/');
+    return `obsidian://open?vault=${encodeURIComponent(vault)}&file=${file}`;
+  }, [note.meta.path]);
   const headings = useMemo<Heading[]>(() => extractHeadings(note.body), [note.body]);
   const checklist = useMemo(() => extractChecklist(note.body), [note.body]);
   const quiz = useMemo(() => extractQuiz(note.body), [note.body]);
@@ -153,12 +167,24 @@ export function NoteView({ note, linkmap, domains, adjacent, siblings }: Props) 
         <div className="content-col">
           <div className="note-wrap" style={{ ['--prose-size' as string]: `${FONT_SIZES[fontIndex]}px` }}>
             <div className="note-head">
-              <div className="crumbs">
-                <Link href="/">首页</Link>
-                <span>/</span>
-                <Link href={`/domain/${encodeURIComponent(note.meta.domain)}/`}>{note.meta.domainTitle}</Link>
-                <span>/</span>
-                <span>{note.meta.group}</span>
+              <div className="head-bar">
+                <div className="crumbs">
+                  <Link href="/">首页</Link>
+                  <span>/</span>
+                  <Link href={`/domain/${encodeURIComponent(note.meta.domain)}/`}>{note.meta.domainTitle}</Link>
+                  <span>/</span>
+                  <span>{note.meta.group}</span>
+                </div>
+                {obsidianHref && (
+                  <a
+                    className="head-action"
+                    href={obsidianHref}
+                    title={`在 Obsidian 中打开：${note.meta.path}`}
+                  >
+                    <PenLine size={12} />
+                    <span className="head-action-label">在 Obsidian 打开</span>
+                  </a>
+                )}
               </div>
               <h1 className="note-title">{note.title}</h1>
               {note.meta.summary && <p className="note-summary">{note.meta.summary}</p>}
