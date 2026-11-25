@@ -21,6 +21,7 @@ import {
   domainMeta,
   domainOrder,
   groupOrder,
+  noteOrder,
 } from '../config/site.config.mjs';
 import { buildMeta, privacyVerdict, slugify, extractWikiTargets, hashSuffix, resolveWikiLinks } from './lib/notes.mjs';
 
@@ -290,9 +291,18 @@ function seqKey(slug) {
       .map(([groupId, list]) => ({
         id: groupId,
         title: groupId,
-        notes: list.sort(
-          (a, b) => collator.compare(a.seq, b.seq) || collator.compare(a.title, b.title),
-        ),
+        notes: list.sort((a, b) => {
+          const seq = noteOrder[groupId] || [];
+          const seqRank = (item) => {
+            const i = seq.findIndex((p) => item.slug.startsWith(p));
+            return i === -1 ? seq.length : i;
+          };
+          return (
+            seqRank(a) - seqRank(b) ||
+            collator.compare(a.seq, b.seq) ||
+            collator.compare(a.title, b.title)
+          );
+        }),
         count: list.length,
       }));
     const count = groups.reduce((sum, g) => sum + g.count, 0);
