@@ -1,7 +1,9 @@
 'use client';
 
-import { useLayoutEffect, useMemo, useRef } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { ChevronRight, Lock, Search } from 'lucide-react';
+import { queuePrefetch } from '@/lib/prefetchQueue';
 import { useProgress } from '@/lib/progress';
 import { useVault } from './VaultProvider';
 import { useNav } from './NavContext';
@@ -20,6 +22,24 @@ export function SideNav({ domains, activeSlug, activeDomain }: Props) {
   const { navOpen, setNavOpen, openDomains, filter, setFilter, toggleDomain, ensureDomainOpen, sidebarScroll } =
     useNav();
   const scroller = useRef<HTMLElement>(null);
+  const router = useRouter();
+
+  /**
+   * 同组笔记的点击概率最高（读者基本按组顺序推进），进文章就先插队预热它们，
+   * 比等 IntersectionObserver 按视口顺序排要快得多。
+   */
+  useEffect(() => {
+    if (!activeSlug) return;
+    const domain =
+      domains.find((item) => item.id === activeDomain) ||
+      domains.find((item) => item.groups.some((group) => group.notes.some((note) => note.slug === activeSlug)));
+    const group = domain?.groups.find((item) => item.notes.some((note) => note.slug === activeSlug));
+    if (!group) return;
+    for (const note of group.notes) {
+      if (note.slug === activeSlug) continue;
+      queuePrefetch(`/note/${encodeURIComponent(note.slug)}/`, (href) => router.prefetch(href), true);
+    }
+  }, [activeSlug, activeDomain, domains, router]);
 
   // 默认展开当前知识域；从笔记页跳到另一个域时把新域一并展开，不折叠用户已展开的
   const fallbackDomain = activeDomain || domains[0]?.id;
