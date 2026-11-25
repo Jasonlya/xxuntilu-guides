@@ -144,22 +144,39 @@ export function useProgress(): ProgressContextValue {
   return ctx;
 }
 
-/** 文章滚动进度（0~1），用于顶部细进度条 */
-export function useScrollProgress() {
-  const [progress, setProgress] = useState(0);
+/**
+ * 顶部细进度条：直接按帧写 DOM 的 transform，不参与 React 渲染。
+ * 之前用 useState 存滚动进度，每个 scroll 事件都会让整篇笔记（含 markdown 解析）重渲染，
+ * 滚动时表格/代码块会明显闪烁。
+ */
+export function ScrollProgressBar() {
+  const bar = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
-    const onScroll = () => {
-      const scrollTop = window.scrollY;
-      const height = document.documentElement.scrollHeight - window.innerHeight;
-      setProgress(height <= 0 ? 0 : Math.min(1, Math.max(0, scrollTop / height)));
+    let frame = 0;
+
+    const paint = () => {
+      frame = 0;
+      const el = bar.current;
+      if (!el) return;
+      const max = document.documentElement.scrollHeight - window.innerHeight;
+      const ratio = max <= 0 ? 0 : Math.min(1, Math.max(0, window.scrollY / max));
+      el.style.transform = `scaleX(${ratio})`;
     };
-    onScroll();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', onScroll);
+
+    const request = () => {
+      if (!frame) frame = window.requestAnimationFrame(paint);
+    };
+
+    paint();
+    window.addEventListener('scroll', request, { passive: true });
+    window.addEventListener('resize', request);
     return () => {
-      window.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', onScroll);
+      if (frame) window.cancelAnimationFrame(frame);
+      window.removeEventListener('scroll', request);
+      window.removeEventListener('resize', request);
     };
   }, []);
-  return progress;
+
+  return <div ref={bar} className="scroll-progress" aria-hidden="true" />;
 }

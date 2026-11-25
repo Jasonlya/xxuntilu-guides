@@ -14,7 +14,7 @@ import {
   PenLine,
   Sparkles,
 } from 'lucide-react';
-import { useProgress, useScrollProgress } from '@/lib/progress';
+import { ScrollProgressBar, useProgress } from '@/lib/progress';
 import {
   extractChecklist,
   extractHeadings,
@@ -45,13 +45,59 @@ type TabKey = 'read' | 'check' | 'quiz' | 'related';
 
 const FONT_SIZES = [14.5, 15.5, 16.5, 17.5];
 
+/** 目录滚动高亮：状态收在自己身上，滚动时不牵连整篇文章重渲染 */
+function TocRail({ headings }: { headings: Heading[] }) {
+  const [active, setActive] = useState('');
+
+  useEffect(() => {
+    let frame = 0;
+
+    const measure = () => {
+      frame = 0;
+      let current = headings[0]?.id || '';
+      for (const heading of headings) {
+        const el = document.getElementById(heading.id);
+        if (!el) continue;
+        if (el.getBoundingClientRect().top <= 130) current = heading.id;
+        else break;
+      }
+      setActive((prev) => (prev === current ? prev : current));
+    };
+
+    const onScroll = () => {
+      if (!frame) frame = window.requestAnimationFrame(measure);
+    };
+
+    measure();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+    return () => {
+      if (frame) window.cancelAnimationFrame(frame);
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+    };
+  }, [headings]);
+
+  return (
+    <div className="toc">
+      {headings.map((heading) => (
+        <a
+          key={heading.id}
+          href={`#${heading.id}`}
+          className={`${heading.level === 3 ? 'level-3' : ''} ${active === heading.id ? 'active' : ''}`}
+        >
+          {heading.text}
+        </a>
+      ))}
+    </div>
+  );
+}
+
 export function NoteView({ note, linkmap, domains, adjacent, siblings }: Props) {
   const [tab, setTab] = useState<TabKey>('read');
   const [fontIndex, setFontIndex] = useState(1);
-  const [activeHeading, setActiveHeading] = useState('');
   const [copied, setCopied] = useState(false);
   const { isRead, markRead, checkedSet, quizMarks } = useProgress();
-  const scroll = useScrollProgress();
 
   const processed = useMemo(
     () => stripLeadingH1(preprocessWikiLinks(note.body, linkmap)),
@@ -115,28 +161,34 @@ export function NoteView({ note, linkmap, domains, adjacent, siblings }: Props) 
     }
   };
 
+  // 读完（滚动到 85%）自动记为已读，也可在右栏手动切换；
+  // 只在越过阈值时写一次状态，滚动过程中不做任何 setState
   useEffect(() => {
-    if (tab !== 'read') return undefined;
-    const onScroll = () => {
-      let current = headings[0]?.id || '';
-      for (const heading of headings) {
-        const el = document.getElementById(heading.id);
-        if (!el) continue;
-        if (el.getBoundingClientRect().top <= 130) current = heading.id;
-        else break;
+    if (read) return undefined;
+    let frame = 0;
+    let done = false;
+
+    const check = () => {
+      frame = 0;
+      if (done) return;
+      const max = document.documentElement.scrollHeight - window.innerHeight;
+      if (max > 0 && window.scrollY / max >= 0.85) {
+        done = true;
+        markRead(note.slug, note.title, true);
       }
-      setActiveHeading(current);
     };
+
+    const onScroll = () => {
+      if (!frame) frame = window.requestAnimationFrame(check);
+    };
+
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, [tab, headings]);
-
-  // 读完（滚动到 85%）自动记为已读，也可在右栏手动切换
-  useEffect(() => {
-    if (!read && scroll > 0.85) markRead(note.slug, note.title, true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scroll, read]);
+    return () => {
+      if (frame) window.cancelAnimationFrame(frame);
+      window.removeEventListener('scroll', onScroll);
+    };
+  }, [read, markRead, note.slug, note.title]);
 
   const copyLink = async () => {
     try {
@@ -160,7 +212,7 @@ export function NoteView({ note, linkmap, domains, adjacent, siblings }: Props) 
 
   return (
     <>
-      <div className="scroll-progress" style={{ width: `${scroll * 100}%` }} />
+      <ScrollProgressBar />
       <div className="layout with-rail">
         <SideNav domains={domains} activeSlug={note.slug} activeDomain={note.meta.domain} />
 
@@ -271,17 +323,7 @@ export function NoteView({ note, linkmap, domains, adjacent, siblings }: Props) 
           {tab === 'read' && headings.length > 0 && (
             <div className="rail-block">
               <div className="rail-title">本页目录</div>
-              <div className="toc">
-                {headings.map((heading) => (
-                  <a
-                    key={heading.id}
-                    href={`#${heading.id}`}
-                    className={`${heading.level === 3 ? 'level-3' : ''} ${activeHeading === heading.id ? 'active' : ''}`}
-                  >
-                    {heading.text}
-                  </a>
-                ))}
-              </div>
+              <TocRail headings={headings} />
             </div>
           )}
 
