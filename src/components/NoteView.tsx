@@ -15,17 +15,8 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { ScrollProgressBar, useProgress } from '@/lib/progress';
-import {
-  extractChecklist,
-  extractHeadings,
-  extractQuiz,
-  extractWikiLinks,
-  preprocessWikiLinks,
-  sectionBody,
-  stripLeadingH1,
-  type Heading,
-} from '@/lib/markdown';
-import type { LinkMap, NavDomain, NotePayload } from '@/lib/types';
+import { extractChecklist, extractHeadings, extractQuiz, type Heading } from '@/lib/markdown';
+import type { NavDomain, NotePayload } from '@/lib/types';
 import { Markdown } from './Markdown';
 import { Checklist } from './Checklist';
 import { Quiz } from './Quiz';
@@ -35,7 +26,10 @@ import { SideNav } from './SideNav';
 
 interface Props {
   note: NotePayload;
-  linkmap: LinkMap;
+  /** 服务端预处理好（wikilink 已解析、首行 h1 已去）的正文 */
+  source: string;
+  /** 服务端解析好的「相关笔记」，省得客户端再跑一遍 wikilink 反查 */
+  related: { slug: string; title: string }[];
   domains: NavDomain[];
   adjacent: { prev: { slug: string; title: string } | null; next: { slug: string; title: string } | null };
   siblings: { slug: string; title: string }[];
@@ -93,18 +87,24 @@ function TocRail({ headings }: { headings: Heading[] }) {
   );
 }
 
-export function NoteView({ note, linkmap, domains, adjacent, siblings }: Props) {
+export function NoteView({
+  note,
+  source,
+  related,
+  domains,
+  adjacent,
+  siblings,
+}: Props) {
   const [tab, setTab] = useState<TabKey>('read');
   const [fontIndex, setFontIndex] = useState(1);
   const [copied, setCopied] = useState(false);
   const { isRead, markRead, checkedSet, quizMarks } = useProgress();
 
-  const processed = useMemo(
-    () => stripLeadingH1(preprocessWikiLinks(note.body, linkmap)),
-    [note.body, linkmap],
-  );
-
   // 深链到本地 Obsidian：只有本机装了 Obsidian 且库名一致才会响应，对访客无害
+  const headings = useMemo(() => extractHeadings(source), [source]);
+  const checklist = useMemo(() => extractChecklist(source), [source]);
+  const quiz = useMemo(() => extractQuiz(source), [source]);
+
   const obsidianHref = useMemo(() => {
     const vaultPath = note.meta.path;
     if (!vaultPath) return '';
@@ -116,26 +116,6 @@ export function NoteView({ note, linkmap, domains, adjacent, siblings }: Props) 
       .join('/');
     return `obsidian://open?vault=${encodeURIComponent(vault)}&file=${file}`;
   }, [note.meta.path]);
-  const headings = useMemo<Heading[]>(() => extractHeadings(note.body), [note.body]);
-  const checklist = useMemo(() => extractChecklist(note.body), [note.body]);
-  const quiz = useMemo(() => extractQuiz(note.body), [note.body]);
-  const related = useMemo(() => {
-    const section = sectionBody(note.body, '相关笔记');
-    const seen = new Set<string>();
-    return extractWikiLinks(section)
-      .map((item) => {
-        const slug = linkmap[item.target.replace(/\.md$/i, '').trim().toLowerCase()] ||
-          linkmap[item.target.split('/').pop()?.replace(/\.md$/i, '').trim().toLowerCase() || ''];
-        return slug ? { slug, title: item.label } : null;
-      })
-      .filter((item): item is { slug: string; title: string } => Boolean(item))
-      .filter((item) => {
-        if (item.slug === note.slug || seen.has(item.slug)) return false;
-        seen.add(item.slug);
-        return true;
-      });
-  }, [note.body, note.slug, linkmap]);
-
   const read = isRead(note.slug);
   const doneChecks = checkedSet(note.slug);
   const checkCount = checklist.items.filter((item) => doneChecks.has(item.index)).length;
@@ -295,11 +275,11 @@ export function NoteView({ note, linkmap, domains, adjacent, siblings }: Props) 
               </div>
             </div>
 
-            {tab === 'read' && <Markdown source={processed} />}
+            {tab === 'read' && <Markdown source={source} />}
             {tab === 'check' && (
               <Checklist slug={note.slug} items={checklist.items} fromSection={checklist.fromSection} />
             )}
-            {tab === 'quiz' && <Quiz slug={note.slug} items={quiz} linkmap={linkmap} />}
+            {tab === 'quiz' && <Quiz slug={note.slug} items={quiz} />}
             {tab === 'related' && <Related note={note} related={related} siblings={siblings} />}
 
             <nav className="pager">

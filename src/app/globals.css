@@ -492,6 +492,29 @@ textarea {
   opacity: 0.75;
 }
 
+/* 点击后立刻出现的导航中提示：哪怕正文还没回来，也能看到「已经点到了」 */
+.nav-link .nav-pending {
+  margin-left: auto;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--accent);
+  animation: navPending 0.9s ease-in-out infinite;
+}
+
+@keyframes navPending {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 .nav-empty {
   padding: 22px 10px;
   font-size: 12.5px;

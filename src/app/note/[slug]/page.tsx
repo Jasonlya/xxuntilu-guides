@@ -1,6 +1,13 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { allNoteSlugs, getAdjacent, getDomain, getLinkmap, getNavDomains, getNote } from '@/lib/content';
+import {
+  extractWikiLinks,
+  preprocessWikiLinks,
+  sectionBody,
+  stripLeadingH1,
+} from '@/lib/markdown';
+
 import { NoteView } from '@/components/NoteView';
 
 export const dynamicParams = false;
@@ -29,6 +36,24 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   };
 }
 
+/** 「相关笔记」小节里的 wikilink → slug */
+function resolveRelated(body: string, slug: string, linkmap: Record<string, string>) {
+  const seen = new Set<string>();
+  return extractWikiLinks(sectionBody(body, '相关笔记'))
+    .map((item) => {
+      const resolved =
+        linkmap[item.target.replace(/\.md$/i, '').trim().toLowerCase()] ||
+        linkmap[item.target.split('/').pop()?.replace(/\.md$/i, '').trim().toLowerCase() || ''];
+      return resolved ? { slug: resolved, title: item.label } : null;
+    })
+    .filter((item): item is { slug: string; title: string } => Boolean(item))
+    .filter((item) => {
+      if (item.slug === slug || seen.has(item.slug)) return false;
+      seen.add(item.slug);
+      return true;
+    });
+}
+
 export default async function NotePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug: rawSlug } = await params;
   const slug = decodeSlug(rawSlug);
@@ -43,10 +68,17 @@ export default async function NotePage({ params }: { params: Promise<{ slug: str
     .filter((item) => item.slug !== slug)
     .map((item) => ({ slug: item.slug, title: item.title }));
 
+  // 正文解析、目录提取、清单/自测抽取全部在构建期做完：
+  // 客户端跳转时不再需要几万字 markdown，也不用把 react-markdown 打进包里。
+  const source = stripLeadingH1(preprocessWikiLinks(note.body, linkmap));
+  const related = resolveRelated(note.body, slug, linkmap);
+
+
   return (
     <NoteView
-      note={note}
-      linkmap={linkmap}
+      note={{ ...note, body: '' }}
+      source={source}
+      related={related}
       domains={navDomains}
       adjacent={getAdjacent(note.meta.domain, slug)}
       siblings={siblings}

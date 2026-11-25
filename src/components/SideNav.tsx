@@ -82,8 +82,7 @@ export function SideNav({ domains, activeSlug, activeDomain }: Props) {
             .filter(
               (note) =>
                 note.title.toLowerCase().includes(keyword) ||
-                note.tags.some((tag) => tag.toLowerCase().includes(keyword)) ||
-                note.id.toLowerCase().includes(keyword),
+                (note.id ? note.id.toLowerCase().includes(keyword) : false),
             )
             .map((note) => ({ note, domain, group })),
         ),

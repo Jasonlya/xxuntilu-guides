@@ -89,13 +89,6 @@ export function getNavDomains(): NavDomain[] {
         slug: note.slug,
         title: note.title,
         id: note.id,
-        level: note.level,
-        updated: note.updated,
-        minutes: note.minutes,
-        chars: note.chars,
-        summary: '',
-        topics: [] as string[],
-        tags: note.tags,
       })),
     })),
   }));

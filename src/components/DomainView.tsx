@@ -27,8 +27,8 @@ export function DomainView({ domain, domains }: Props) {
         notes: group.notes.filter(
           (note) =>
             note.title.toLowerCase().includes(keyword) ||
-            note.tags.some((tag) => tag.toLowerCase().includes(keyword)) ||
-            note.summary.toLowerCase().includes(keyword),
+            (note.tags || []).some((tag) => tag.toLowerCase().includes(keyword)) ||
+            (note.summary || '').toLowerCase().includes(keyword),
         ),
       }))
       .filter((group) => group.notes.length > 0);

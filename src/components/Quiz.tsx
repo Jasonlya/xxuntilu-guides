@@ -9,10 +9,9 @@ import { Markdown } from './Markdown';
 interface Props {
   slug: string;
   items: QuizItem[];
-  linkmap: Record<string, string>;
 }
 
-export function Quiz({ slug, items, linkmap }: Props) {
+export function Quiz({ slug, items }: Props) {
   const { quizMarks, setQuizMark } = useProgress();
   const marks = quizMarks(slug);
   const [open, setOpen] = useState<Set<number>>(() => new Set());

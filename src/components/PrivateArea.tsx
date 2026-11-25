@@ -149,7 +149,7 @@ export function PrivateArea({ domains, publicLinkmap }: Props) {
           {tab === 'check' && (
             <Checklist slug={`private:${active.slug}`} items={checklist.items} fromSection={checklist.fromSection} />
           )}
-          {tab === 'quiz' && <Quiz slug={`private:${active.slug}`} items={quiz} linkmap={linkmap} />}
+          {tab === 'quiz' && <Quiz slug={`private:${active.slug}`} items={quiz} />}
         </article>
       </div>
     );

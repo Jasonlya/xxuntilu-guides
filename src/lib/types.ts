@@ -1,14 +1,18 @@
+/**
+ * 侧栏用的最小字段集：笔记页每次跳转都要重下这棵树，
+ * 所以只保留渲染与筛选真正用到的字段，其余可选（域页面走完整 manifest）。
+ */
 export interface NavNote {
   slug: string;
   title: string;
-  id: string;
-  level: string;
-  updated: string;
-  minutes: number;
-  chars: number;
-  summary: string;
-  topics: string[];
-  tags: string[];
+  id?: string;
+  level?: string;
+  updated?: string;
+  minutes?: number;
+  chars?: number;
+  summary?: string;
+  topics?: string[];
+  tags?: string[];
 }
 
 export interface NavGroup {
