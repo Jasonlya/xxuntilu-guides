@@ -1,5 +1,6 @@
 import path from 'node:path';
 import crypto from 'node:crypto';
+import GithubSlugger from 'github-slugger';
 import {
   privateDirNames,
   privatePathPatterns,
@@ -147,8 +148,13 @@ export function resolveWikiLinks(markdown, linkmap, privateKeys = new Set()) {
     .map((segment, index) => {
       if (index % 2 === 1) return segment;
       return segment.replace(WIKILINK_RE, (full, target, alias) => {
-        const label = (alias || target).trim();
-        const key = target
+        // [[笔记#小节]] 的锚点要单独拆出来：文件名用「#」前部分查 linkmap，
+        // 锚点按 github-slugger 转成 id，和 rehype-slug 生成的标题 id 对齐。
+        const hashAt = target.indexOf('#');
+        const pathPart = hashAt === -1 ? target : target.slice(0, hashAt);
+        const rawAnchor = hashAt === -1 ? '' : target.slice(hashAt + 1).trim();
+        const label = (alias || (rawAnchor ? pathPart : target)).trim();
+        const key = pathPart
           .replace(/\\/g, '/')
           .replace(/\.md$/i, '')
           .replace(/^\/+/, '')
@@ -161,7 +167,9 @@ export function resolveWikiLinks(markdown, linkmap, privateKeys = new Set()) {
         }
         const slug = linkmap[key] || linkmap[key.split('/').pop() || key];
         if (!slug) return `[${label}](missing:${encodeURIComponent(label)})`;
-        return `[${label}](/note/${encodeURIComponent(slug)}/)`;
+        // 每次新建 slugger：同一个实例会对重复标题追加 -1，破坏锚点
+        const frag = rawAnchor ? `#${encodeURIComponent(new GithubSlugger().slug(rawAnchor))}` : '';
+        return `[${label}](/note/${encodeURIComponent(slug)}/${frag})`;
       });
     })
     .join('');

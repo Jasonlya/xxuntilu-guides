@@ -29,6 +29,19 @@ export function resolveWiki(target: string, linkmap: LinkMap): string | undefine
 /** 手写的 /note/xxx/ 绝对链接：按 linkmap 校正到当前 slug（改名或旧路径也能跳对） */
 const ABS_NOTE_RE = /\]\(\/note\/([^)\s]+?)\/?\)/g;
 
+/**
+ * 拼接目标链接，保留 `#小节` 锚点。
+ * 锚点 id 与 rehype-slug 一致（github-slugger），否则会跳到页顶。
+ */
+function buildHref(slug: string, rawTarget: string): string {
+  const base = `/note/${encodeURIComponent(slug)}/`;
+  const hashAt = rawTarget.indexOf('#');
+  if (hashAt === -1) return base;
+  const raw = rawTarget.slice(hashAt + 1).trim();
+  if (!raw) return base;
+  return `${base}#${encodeURIComponent(new GithubSlugger().slug(raw))}`;
+}
+
 export function preprocessWikiLinks(markdown: string, linkmap: LinkMap): string {
   const segments = markdown.split(/(```[\s\S]*?```|`[^`\n]*`)/g);
   return segments
@@ -42,16 +55,16 @@ export function preprocessWikiLinks(markdown: string, linkmap: LinkMap): string 
           return full;
         }
         const slug = resolveWiki(decoded, linkmap);
-        return slug ? `](/note/${encodeURIComponent(slug)}/)` : full;
+        return slug ? `](${buildHref(slug, decoded)})` : full;
       });
       return segmentWithAbs.replace(WIKI_RE, (full, target: string, alias: string | undefined) => {
-        const label = (alias || target).trim();
+        const label = (alias || target).replace(/#.*$/, '').trim() || alias || target;
         if (full.startsWith('!')) {
           return `> 附件：${label}`;
         }
         const slug = resolveWiki(target, linkmap);
         if (!slug) return `[${label}](missing:${encodeURIComponent(label)})`;
-        return `[${label}](/note/${encodeURIComponent(slug)}/)`;
+        return `[${label}](${buildHref(slug, target)})`;
       });
     })
     .join('');
