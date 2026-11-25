@@ -198,6 +198,7 @@ export const noteOrder = {
     'Python-语言核心',
     'Python-并发',
     'Python-工程化',
+    'pytest-框架',
     'Python-解释器',
     'Python-元编程',
   ],
