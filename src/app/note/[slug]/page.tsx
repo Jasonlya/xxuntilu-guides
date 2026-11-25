@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { allNoteSlugs, getAdjacent, getDomain, getLinkmap, getManifest, getNote } from '@/lib/content';
+import { allNoteSlugs, getAdjacent, getDomain, getLinkmap, getNavDomains, getNote } from '@/lib/content';
 import { NoteView } from '@/components/NoteView';
 
 export const dynamicParams = false;
@@ -35,7 +35,7 @@ export default async function NotePage({ params }: { params: Promise<{ slug: str
   const note = getNote(slug);
   if (!note) notFound();
 
-  const manifest = getManifest();
+  const navDomains = getNavDomains();
   const linkmap = getLinkmap();
   const domain = getDomain(note.meta.domain);
   const group = domain?.groups.find((item) => item.id === note.meta.group);
@@ -47,7 +47,7 @@ export default async function NotePage({ params }: { params: Promise<{ slug: str
     <NoteView
       note={note}
       linkmap={linkmap}
-      domains={manifest.domains}
+      domains={navDomains}
       adjacent={getAdjacent(note.meta.domain, slug)}
       siblings={siblings}
     />

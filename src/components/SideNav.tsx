@@ -1,11 +1,11 @@
 'use client';
 
 import { useLayoutEffect, useMemo, useRef } from 'react';
-import Link from 'next/link';
 import { ChevronRight, Lock, Search } from 'lucide-react';
 import { useProgress } from '@/lib/progress';
 import { useVault } from './VaultProvider';
 import { useNav } from './NavContext';
+import { SmartLink } from './SmartLink';
 import type { NavDomain } from '@/lib/types';
 
 interface Props {
@@ -125,7 +125,7 @@ export function SideNav({ domains, activeSlug, activeDomain }: Props) {
           ) : (
             <div className="nav-filtered">
               {filtered.map(({ note, domain, group }) => (
-                <Link
+                <SmartLink
                   key={`${domain.id}-${note.slug}`}
                   href={`/note/${encodeURIComponent(note.slug)}/`}
                   className={`nav-link ${note.slug === activeSlug ? 'active' : ''}`}
@@ -138,7 +138,7 @@ export function SideNav({ domains, activeSlug, activeDomain }: Props) {
                   <span className="nav-count" style={{ opacity: 0.8 }}>
                     {group.id}
                   </span>
-                </Link>
+                </SmartLink>
               ))}
             </div>
           )
@@ -166,19 +166,19 @@ export function SideNav({ domains, activeSlug, activeDomain }: Props) {
                           <span className="nav-group-title">{group.title}</span>
                         )}
                         {group.notes.map((note) => (
-                          <Link
+                          <SmartLink
                             key={note.slug}
                             href={`/note/${encodeURIComponent(note.slug)}/`}
                             className={`nav-link ${note.slug === activeSlug ? 'active' : ''}`}
                             onClick={() => {
-                    rememberScroll();
-                    setNavOpen(false);
-                  }}
+                              rememberScroll();
+                              setNavOpen(false);
+                            }}
                             title={note.title}
                           >
                             <span className="nav-link-text">{note.title}</span>
                             {ready && state.read[note.slug] && <i className="nav-read" aria-label="已读" />}
-                          </Link>
+                          </SmartLink>
                         ))}
                       </div>
                     ))}
@@ -194,9 +194,9 @@ export function SideNav({ domains, activeSlug, activeDomain }: Props) {
           加密区
         </div>
         {vault.status === 'unlocked' ? (
-          <Link href="/private/" className="nav-link" onClick={() => setNavOpen(false)}>
+          <SmartLink href="/private/" className="nav-link" onClick={() => setNavOpen(false)}>
             私密随记 <span className="nav-count">{vault.count}</span>
-          </Link>
+          </SmartLink>
         ) : (
           <button
             type="button"

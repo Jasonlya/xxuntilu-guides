@@ -12,6 +12,8 @@ import { splitFrontmatter, toArray, toDateString } from './frontmatter.mjs';
 export function slugify(input) {
   return String(input)
     .replace(/\.md$/i, '')
+    // 全角字母数字与半角标点统一成半角，全角冒号 / 括号才会被下面的规则吃掉
+    .normalize('NFKC')
     // 点号会让 Next 把路径当静态文件处理，尾斜杠被吞掉，预取地址变成 xxx.txt
     .replace(/\./g, '-')
     .trim()
@@ -20,6 +22,8 @@ export function slugify(input) {
     .replace(/[（(]/g, '-')
     .replace(/[）)]/g, '')
     .replace(/—|–/g, '-')
+    // CJK 标点（、。《》「」【】等）NFKC 不会转，Obsidian 文件名里很常见
+    .replace(/[\u3001\u3002\u3008-\u3011\u3014-\u301f\u30fb\uff5b-\uff65]/g, '-')
     .replace(/-{2,}/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 90);
