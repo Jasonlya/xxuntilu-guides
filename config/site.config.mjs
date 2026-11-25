@@ -195,6 +195,7 @@ export const noteOrder = {
   '编程语言': [
     'Python-学习路径',
     'Python-基础',
+    'Python-核心概念',
     'Python-语言核心',
     'Python-并发',
     'Python-工程化',
