@@ -79,7 +79,7 @@ export const domainMeta = {
   '5-AI与Agent': {
     title: 'AI 与 Agent',
     short: 'AI',
-    desc: 'Agent 执行循环、RAG 链路、评测与判分。',
+    desc: '概念阶梯、Agent 执行循环、RAG 链路、评测与判分。',
     accent: '#7c3aed',
   },
   '6-前端': {
